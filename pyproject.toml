@@ -10,6 +10,7 @@ homepage = "https://github.com/vocodedev/vocode-python"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
+six = "^1.16.0"
 aiohttp = "^3.9.5"
 anthropic = "^0.28.0"
 azure-cognitiveservices-speech = "^1.38.0"
