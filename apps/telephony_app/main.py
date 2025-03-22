@@ -47,7 +47,8 @@ if not BASE_URL:
             ngrok.set_auth_token(ngrok_auth)
         port = sys.argv[sys.argv.index("--port") + 1] if "--port" in sys.argv else 3000
         BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
-        logger.info(f'ngrok tunnel "{BASE_URL}" -> "http://127.0.0.1:{port}")
+        logger.info(f'ngrok tunnel "{BASE_URL}" -> "http://127.0.0.1:{port}"')
+
 
 if not BASE_URL:
     raise ValueError("BASE_URL is required")
