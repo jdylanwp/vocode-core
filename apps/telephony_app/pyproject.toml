@@ -18,3 +18,7 @@ vonage = "^3.16.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+uvicorn = "*"
+
