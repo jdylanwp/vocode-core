@@ -1,14 +1,14 @@
-FROM vocodedev/vocode:latest
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Add missing system dependencies
-RUN apt-get update && apt-get install -y libuuid1 && rm -rf /var/lib/apt/lists/*
-
 COPY pyproject.toml poetry.lock ./
-RUN pip install --upgrade pip poetry \
- && poetry config virtualenvs.create false \
- && poetry install --no-dev --no-interaction
+RUN pip install --no-cache-dir poetry
+RUN poetry config virtualenvs.create false \
+ && poetry install --no-dev --no-interaction --no-ansi
+
+# Fix for libuuid error
+RUN apt-get update && apt-get install -y libuuid1
 
 COPY . .
 
