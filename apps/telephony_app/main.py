@@ -7,33 +7,32 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from loguru import logger
 
-# Local application/library specific imports
+# Local imports
 from .speller_agent import SpellerAgentFactory
 from vocode.logging import configure_pretty_logging
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.models.transcriber import DeepgramTranscriberConfig, PunctuationEndpointingConfig
+from vocode.streaming.models.synthesizer import ElevenLabsSynthesizerConfig
 from vocode.streaming.telephony.config_manager.redis_config_manager import RedisConfigManager
 from vocode.streaming.telephony.server.base import TelephonyServer, TwilioInboundCallConfig
+from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 
-# Load local .env file if running locally
+# Load local .env file if available
 load_dotenv()
 configure_pretty_logging()
 
 app = FastAPI(docs_url=None)
 config_manager = RedisConfigManager()
-
-# Get BASE_URL from environment
 BASE_URL = os.getenv("BASE_URL")
 
-# ⛔ If BASE_URL not set, either fail (Railway) or launch ngrok (Local)
+# Launch ngrok locally if no BASE_URL is set
 if not BASE_URL:
     if os.environ.get("RAILWAY_ENVIRONMENT"):
         raise ValueError("BASE_URL must be set in Railway environment")
 
-    # ✅ Only import pyngrok locally
     from pyngrok import ngrok
-
     ngrok_auth = os.environ.get("NGROK_AUTH_TOKEN")
     if ngrok_auth:
         ngrok.set_auth_token(ngrok_auth)
@@ -42,11 +41,10 @@ if not BASE_URL:
     BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
     logger.info(f'ngrok tunnel "{BASE_URL}" -> "http://127.0.0.1:{port}"')
 
-# If still missing, fail safely
 if not BASE_URL:
     raise ValueError("BASE_URL is required")
 
-# Build the telephony server
+# Setup TelephonyServer with ElevenLabs TTS
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
     config_manager=config_manager,
@@ -54,18 +52,32 @@ telephony_server = TelephonyServer(
         TwilioInboundCallConfig(
             url="/inbound_call",
             agent_config=ChatGPTAgentConfig(
-                initial_message=BaseMessage(text="What up"),
-                prompt_preamble="Have a pleasant conversation about life",
+                openai_api_key=os.environ["OPENAI_API_KEY"],
+                initial_message=BaseMessage(text="Hey there, how can I help today?"),
+                prompt_preamble="You are a helpful and friendly assistant. Keep your responses natural and polite.",
                 generate_responses=True,
             ),
             twilio_config=TwilioConfig(
                 account_sid=os.environ["TWILIO_ACCOUNT_SID"],
                 auth_token=os.environ["TWILIO_AUTH_TOKEN"],
             ),
+            transcriber_config=DeepgramTranscriberConfig(
+                api_key=os.environ["DEEPGRAM_API_KEY"],
+                endpointing_config=PunctuationEndpointingConfig()
+            ),
+            synthesizer_config=ElevenLabsSynthesizerConfig(
+                api_key=os.environ["ELEVEN_LABS_API_KEY"],
+                voice_id=os.environ["ELEVEN_LABS_VOICE_ID"],
+            )
         )
     ],
     agent_factory=SpellerAgentFactory(),
+    synthesizer=ElevenLabsSynthesizer(
+        ElevenLabsSynthesizerConfig(
+            api_key=os.environ["ELEVEN_LABS_API_KEY"],
+            voice_id=os.environ["ELEVEN_LABS_VOICE_ID"]
+        )
+    )
 )
 
-# Register the API routes
 app.include_router(telephony_server.get_router())
