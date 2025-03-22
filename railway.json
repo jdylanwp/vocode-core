@@ -1,0 +1,11 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksConfigPath": "nixpacks.toml",
+    "buildCommand": "poetry install --no-dev --no-interaction --no-ansi"
+  },
+  "deploy": {
+    "startCommand": "uvicorn apps.telephony_app.main:app --host 0.0.0.0 --port 3000"
+  },
+  "rootDirectory": "."
+}
