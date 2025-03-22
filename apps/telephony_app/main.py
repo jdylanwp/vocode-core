@@ -7,8 +7,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from loguru import logger
 
-# Local imports
-from .speller_agent import SpellerAgentFactory
+# Fixed absolute import
+from apps.telephony_app.speller_agent import SpellerAgentFactory
+
+# Vocode SDK imports
 from vocode.logging import configure_pretty_logging
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
@@ -19,24 +21,26 @@ from vocode.streaming.telephony.config_manager.redis_config_manager import Redis
 from vocode.streaming.telephony.server.base import TelephonyServer, TwilioInboundCallConfig
 from vocode.streaming.synthesizer.eleven_labs_synthesizer import ElevenLabsSynthesizer
 
-# Load local .env file if available
+# Load local .env
 load_dotenv()
 configure_pretty_logging()
 
+# FastAPI app instance
 app = FastAPI(docs_url=None)
-config_manager = RedisConfigManager()
-BASE_URL = os.getenv("BASE_URL")
 
-# Launch ngrok locally if no BASE_URL is set
+# Redis config manager
+config_manager = RedisConfigManager()
+
+# Set BASE_URL
+BASE_URL = os.getenv("BASE_URL")
 if not BASE_URL:
     if os.environ.get("RAILWAY_ENVIRONMENT"):
         raise ValueError("BASE_URL must be set in Railway environment")
-
+    # Only used for local dev
     from pyngrok import ngrok
     ngrok_auth = os.environ.get("NGROK_AUTH_TOKEN")
     if ngrok_auth:
         ngrok.set_auth_token(ngrok_auth)
-
     port = sys.argv[sys.argv.index("--port") + 1] if "--port" in sys.argv else 3000
     BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
     logger.info(f'ngrok tunnel "{BASE_URL}" -> "http://127.0.0.1:{port}"')
@@ -44,7 +48,7 @@ if not BASE_URL:
 if not BASE_URL:
     raise ValueError("BASE_URL is required")
 
-# Setup TelephonyServer with ElevenLabs TTS
+# Telephony server config
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
     config_manager=config_manager,
@@ -80,5 +84,10 @@ telephony_server = TelephonyServer(
     )
 )
 
+# Attach routes to app
 app.include_router(telephony_server.get_router())
 
+# Optional: for local execution
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("apps.telephony_app.main:app", host="0.0.0.0", port=3000)
