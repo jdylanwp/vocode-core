@@ -31,19 +31,23 @@ app = FastAPI(docs_url=None)
 # Redis config manager
 config_manager = RedisConfigManager()
 
-# Set BASE_URL
+# Set BASE_URL automatically from Railway or pyngrok
 BASE_URL = os.getenv("BASE_URL")
+
 if not BASE_URL:
-    if os.environ.get("RAILWAY_ENVIRONMENT"):
-        raise ValueError("BASE_URL must be set in Railway environment")
-    # Only used for local dev
-    from pyngrok import ngrok
-    ngrok_auth = os.environ.get("NGROK_AUTH_TOKEN")
-    if ngrok_auth:
-        ngrok.set_auth_token(ngrok_auth)
-    port = sys.argv[sys.argv.index("--port") + 1] if "--port" in sys.argv else 3000
-    BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
-    logger.info(f'ngrok tunnel "{BASE_URL}" -> "http://127.0.0.1:{port}"')
+    # Try Railway-generated URL
+    if os.environ.get("RAILWAY_STATIC_URL"):
+        BASE_URL = os.environ["RAILWAY_STATIC_URL"].replace("https://", "")
+        logger.info(f"Using Railway static URL: {BASE_URL}")
+    else:
+        # Fallback to local development with ngrok
+        from pyngrok import ngrok
+        ngrok_auth = os.environ.get("NGROK_AUTH_TOKEN")
+        if ngrok_auth:
+            ngrok.set_auth_token(ngrok_auth)
+        port = sys.argv[sys.argv.index("--port") + 1] if "--port" in sys.argv else 3000
+        BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
+        logger.info(f'ngrok tunnel "{BASE_URL}" -> "http://127.0.0.1:{port}")
 
 if not BASE_URL:
     raise ValueError("BASE_URL is required")
