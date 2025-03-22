@@ -72,3 +72,8 @@ telephony_server = TelephonyServer(
 )
 
 app.include_router(telephony_server.get_router())
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("telephony_app.main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
+
