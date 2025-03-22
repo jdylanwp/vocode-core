@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from loguru import logger
 
 # Local application/library specific imports
-from speller_agent import SpellerAgentFactory
+from .speller_agent import SpellerAgentFactory
 from vocode.logging import configure_pretty_logging
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
