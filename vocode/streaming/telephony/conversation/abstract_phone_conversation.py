@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Literal, Optional, TypeVar
+from typing import Literal, Optional
 
 from fastapi import WebSocket
 from loguru import logger
@@ -19,15 +19,16 @@ from vocode.streaming.transcriber.abstract_factory import AbstractTranscriberFac
 from vocode.streaming.utils import create_conversation_id
 from vocode.streaming.utils.events_manager import EventsManager
 
-TelephonyOutputDeviceType = TwilioOutputDevice  # Only using Twilio now
-
 LOW_INTERRUPT_SENSITIVITY_THRESHOLD = 0.9
-
 TelephonyProvider = Literal["twilio"]  # Removed "vonage"
 
 
-class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]):
-    telephony_provider: TelephonyProvider
+class AbstractPhoneConversation(StreamingConversation):
+    """
+    A conversation that only uses Twilio for inbound/outbound phone calls.
+    """
+
+    telephony_provider: TelephonyProvider = "twilio"
 
     def __init__(
         self,
@@ -36,7 +37,7 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
         to_phone: str,
         base_url: str,
         config_manager: BaseConfigManager,
-        output_device: TelephonyOutputDeviceType,
+        output_device: TwilioOutputDevice,
         agent_config: AgentConfig,
         transcriber_config: TranscriberConfig,
         synthesizer_config: SynthesizerConfig,
@@ -54,15 +55,17 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
         self.from_phone = from_phone
         self.to_phone = to_phone
         self.base_url = base_url
+
         super().__init__(
-            output_device,
-            transcriber_factory.create_transcriber(transcriber_config),
-            agent_factory.create_agent(agent_config),
-            synthesizer_factory.create_synthesizer(synthesizer_config),
+            output_device=output_device,
+            transcriber=transcriber_factory.create_transcriber(transcriber_config),
+            agent=agent_factory.create_agent(agent_config),
+            synthesizer=synthesizer_factory.create_synthesizer(synthesizer_config),
             conversation_id=conversation_id,
             events_manager=events_manager,
             speed_coefficient=speed_coefficient,
         )
+
         self.config_manager = config_manager
 
     def attach_ws(self, ws: WebSocket):
@@ -77,4 +80,3 @@ class AbstractPhoneConversation(StreamingConversation[TelephonyOutputDeviceType]
     async def terminate(self):
         self.events_manager.publish_event(PhoneCallEndedEvent(conversation_id=self.id))
         await super().terminate()
-
