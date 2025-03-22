@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 # Third-party imports
 from fastapi import FastAPI
 from loguru import logger
-from pyngrok import ngrok
 
 # Local application/library specific imports
 from speller_agent import SpellerAgentFactory
